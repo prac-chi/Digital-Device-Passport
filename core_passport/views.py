@@ -15,7 +15,6 @@ from .models import DigitalPassport, EventLog
 
 
 # --- WIPE ALGORITHMS DEFINITION ---
-# This dictionary defines the security options for the user
 WIPE_ALGORITHMS = {
     'NIST': {'name': 'NIST SP 800-88 Purge', 'passes': '1 Pass (Random)', 'description': 'The current industry standard for modern SSDs/HDDs. Highly effective and fast.'},
     'DOD': {'name': 'DoD 5220.22-M', 'passes': '3 Passes (Pattern)', 'description': 'A legacy military standard, reliable for older magnetic drives (HDDs) but slower.'},
@@ -36,9 +35,9 @@ def UniversalWipeInterfaceView(request):
     ]
     
     simulated_folders = [
-        {'path': 'Documents', 'name': 'Documents Folder (Sensitive)'},
-        {'path': 'Downloads', 'name': 'Downloads (Temporary)'},
-        {'path': 'Desktop', 'name': 'Desktop (Project Files)'},
+        {'path': 'Documents', 'name': 'Documents'},
+        {'path': 'Downloads', 'name': 'Downloads'},
+        {'path': 'Desktop', 'name': 'Desktop'},
     ]
     
     context = {
@@ -73,7 +72,7 @@ class MintPassportAPIView(APIView):
                 }, status=status.HTTP_409_CONFLICT)
             
             try:
-                passport = serializer.create(serializer.validated_data)
+                passport = serializer.create(validated_data=serializer.validated_data)
                 return Response({
                     "message": "Digital Passport Minted Successfully.",
                     "imei": passport.imei_serial,
@@ -106,14 +105,18 @@ def remote_file_delete(request):
 
     # Construct the rm -rf command based on selected folders
     delete_paths = " ".join([f"{user_dir}{f}/*" for f in target_folders])
-    # The actual command: permanently deletes files
-    delete_command = f"rm -rf {delete_paths} && echo 'File Deletion Complete.'"
+    
+    # 💥 FIX: Add 'sudo' to elevate permissions for permanent file deletion
+    delete_command = f"sudo rm -rf {delete_paths} && echo 'File Deletion Complete.'"
     
     try:
+        # NOTE: This command assumes the user running Django has NOPASSWD configured for sudo in Kali.
         subprocess.run(delete_command, shell=True, check=True, capture_output=True)
-        return Response({'message': f'Files in {", ".join(target_folders)} Deleted Successfully.'}, status=status.HTTP_200_OK)
+        return Response({'message': f'Files in {", ".join(target_folders)} Deleted Successfully.', 'status': 200}, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({'message': 'File Deletion Failed.', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        # Log the failure, especially if sudo failed.
+        print(f"Deletion failed: {e}")
+        return Response({'message': 'File Deletion Failed due to insufficient permissions or command error.', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ------------------------------------------------------------------
@@ -136,9 +139,10 @@ def local_wipe_and_mint(request):
     try:
         # Step 2: WIPE FREE SPACE command execution
         # Runs dd to overwrite free blocks in the user's home directory partition
+        # 💥 FIX: Added 'sudo' for dd and rm to ensure privilege for disk access/file removal
         wipe_command = (
-            f"dd if=/dev/zero of={user_dir}temp_wipe.dat bs=1M status=none || true; "
-            f"rm -f {user_dir}temp_wipe.dat && echo 'Wipe verified.'"
+            f"sudo dd if=/dev/zero of={user_dir}temp_wipe.dat bs=1M status=none || true; "
+            f"sudo rm -f {user_dir}temp_wipe.dat && echo 'Wipe verified.'"
         )
         
         subprocess.run(wipe_command, shell=True, check=True, capture_output=True, text=True)
@@ -173,7 +177,7 @@ def local_wipe_and_mint(request):
         else:
              return Response({'detail': serializer.errors}, status=400)
     
-    return Response({'detail': f"Secure wipe failed: {wipe_log}"}, status=400)
+    return Response({'detail': f"Secure wipe failed: {wipe_log}"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ------------------------------------------------------------------
