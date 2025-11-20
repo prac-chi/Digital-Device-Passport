@@ -1,4 +1,3 @@
-<!-- templates/core_passport/wipe_interface.html -->
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -6,43 +5,50 @@
     <meta charset="UTF-8">
     <title>Universal Secure Wipe Portal</title>
     <style>
-        body { font-family: sans-serif; max-width: 800px; margin: 50px auto; text-align: center; background-color: #f0f4f7; }
-        .container { background-color: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); padding: 30px; }
-        h1 { color: #2196f3; }
-        label { display: block; margin-top: 15px; font-weight: bold; text-align: left; margin-left: 20px; }
-        select, button, .checkbox-group { padding: 10px; margin: 8px 0; font-size: 1em; border-radius: 5px; width: calc(100% - 20px); box-sizing: border-box; }
-        .checkbox-group { text-align: left; border: 1px solid #ccc; padding: 15px; background-color: #f9f9f9; }
+        /* General Layout & Styling */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; max-width: 800px; margin: 50px auto; text-align: center; background-color: #f0f4f7; }
+        .container { background-color: white; border-radius: 10px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15); padding: 30px; }
+        h1 { color: #2196f3; font-weight: 700; margin-bottom: 5px; }
+        p.subtitle { color: #666; margin-bottom: 25px; }
+        label { display: block; margin-top: 15px; font-weight: bold; text-align: left; margin-left: 20px; color: #333; }
+        select, button { padding: 12px; margin: 8px 0; font-size: 1em; border-radius: 6px; width: calc(100% - 20px); box-sizing: border-box; }
+        
+        /* Checkbox Group */
+        .checkbox-group { text-align: left; border: 1px solid #ddd; padding: 15px; background-color: #f9f9f9; border-radius: 6px; margin: 10px 0; }
         .checkbox-group input { margin-right: 10px; }
-        .checkbox-group label { margin-left: 0; font-weight: normal; display: inline-block; }
-        button { border: none; font-weight: bold; cursor: pointer; transition: background-color 0.3s; }
+        .checkbox-group label { margin-left: 0; font-weight: normal; display: inline-block; cursor: pointer; }
+        
+        /* Buttons */
+        button { border: none; font-weight: bold; cursor: pointer; transition: background-color 0.3s, transform 0.1s; }
+        button:active { transform: scale(0.99); }
         #btn-delete { background-color: #f44336; color: white; } 
         #btn-delete:hover { background-color: #d32f2f; }
         #btn-certify { background-color: #4caf50; color: white; }
         #btn-certify:hover { background-color: #388e3c; }
         #btn-certify:disabled { background-color: #ccc; cursor: not-allowed; }
-        .output { border: 1px solid #ccc; padding: 15px; margin-top: 20px; text-align: left; background-color: #eee; white-space: pre-wrap; height: 150px; overflow-y: scroll; border-radius: 5px; font-size: 0.9em; }
-        .algorithm-info { font-size: 0.9em; margin-top: 5px; color: #555; }
+        
+        /* Output Console */
+        .output { border: 1px solid #ccc; padding: 15px; margin-top: 20px; text-align: left; background-color: #333; color: #00ff00; white-space: pre-wrap; height: 180px; overflow-y: scroll; border-radius: 5px; font-size: 0.85em; font-family: 'Consolas', monospace; }
+        
+        /* Info */
+        .algorithm-info { font-size: 0.85em; margin-top: 5px; color: #555; text-align: left; margin-left: 20px; padding: 5px 0; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Universal Secure Wipe Portal</h1>
-        <p>This panel controls the two-step secure erasure on the target device (IP: **{{ kali_ip }}**).</p>
-        <hr>
+        <h1>Digital Device Passport Creator</h1>
+        <p class="subtitle">Securely wipe the target device and mint the immutable Certificate of Erasure.</p>
 
-        <!-- Drive Selection -->
-        <label for="drive-select">1. Select Target Drive/Partition (Physical Target):</label>
+        <!-- Drive Selection (Where to Wipe) -->
+        <label for="drive-select">1. Select Target Drive/Partition (The device being wiped):</label>
         <select id="drive-select">
             {% for drive in simulated_drives %}
                 <option value="{{ drive.id }}">{{ drive.name }}</option>
             {% endfor %}
         </select>
-        <div class="algorithm-info">
-            *Always select the drive containing the operating system you wish to prepare for reuse.*
-        </div>
 
-        <!-- Folder Selection (For Step 1 Deletion) -->
-        <label>2. Select Folders for Permanent Deletion (Step 1 Preparation):</label>
+        <!-- Folder Selection (Step 1 Deletion) -->
+        <label>2. Select Folders for Permanent Deletion (Preparation):</label>
         <div class="checkbox-group">
             {% for folder in simulated_folders %}
                 <div>
@@ -51,14 +57,14 @@
                 </div>
             {% endfor %}
             <div class="algorithm-info">
-                *File deletion marks the space as 'empty', but leaves residue. Residue is destroyed in Step 2.*
+                *Step 1 deletes files but leaves residue. Residue is destroyed in Step 2 (Wipe Free Space).*
             </div>
         </div>
 
         <button id="btn-delete" onclick="step1_deleteFiles()">STEP 1: Delete Selected Files Permanently</button>
         <hr>
         
-        <!-- Algorithm Selection (For Step 2 Wipe) -->
+        <!-- Algorithm Selection (How to Wipe) -->
         <label for="algo-select">3. Select Wiping Algorithm (Security Level):</label>
         <select id="algo-select" onchange="updateAlgorithmInfo()">
             {% for key, algo in wipe_algorithms.items %}
@@ -78,17 +84,28 @@
     </div>
 
     <script>
-        const API_MINT_URL = "http://127.0.0.1:8000{{ api_mint_url }}";
-        const API_DELETE_URL = "http://127.0.0.1:8000{{ api_delete_url }}";
-        const DEVICE_ID = "UNIVERSAL-" + new Date().getTime(); 
+        // --- CRITICAL FIX: USING 127.0.0.1 FOR LOCAL COMMUNICATION ---
+        // Since the browser and the Django API are running on the same Kali VM, 
+        // we use the local loopback address for robust internal communication.
+        const LOCAL_HOST = "http://127.0.0.1:8000";
+        const API_MINT_URL = LOCAL_HOST + "{{ api_mint_url }}";
+        const API_DELETE_URL = LOCAL_HOST + "{{ api_delete_url }}";
+
+        const DEVICE_ID = "UNIVERSAL-WEB-" + new Date().getTime(); 
         const KALI_USER_DIR = "{{ kali_user_dir }}"; 
+        const WIPE_ALGORITHMS = {
+            'NIST': {name: 'NIST SP 800-88 Purge', passes: '1 Pass (Random)', description: 'The current industry standard for modern SSDs/HDDs. Highly effective and fast.'},
+            'DOD': {name: 'DoD 5220.22-M', passes: '3 Passes (Pattern)', description: 'A legacy military standard, reliable for older magnetic drives (HDDs) but slower.'},
+            'QUICK': {name: 'Quick Overwrite (Test)', passes: '1 Pass (Zero)', description: 'Fastest method, suitable for basic reuse but lowest security guarantee.'},
+        };
+
 
         document.addEventListener('DOMContentLoaded', updateAlgorithmInfo);
 
         function log(message) {
             const outputElement = document.getElementById('output');
             outputElement.innerHTML += `<br> ${message}`;
-            outputElement.scrollTop = outputElement.scrollHeight; // Auto-scroll
+            outputElement.scrollTop = outputElement.scrollHeight;
         }
 
         function updateAlgorithmInfo() {
@@ -103,9 +120,10 @@
         function step1_deleteFiles() {
             const checkedFolders = Array.from(document.querySelectorAll('input[name="folders"]:checked'))
                 .map(cb => cb.value);
-
+            
+            // Allow skipping deletion if user only wants to wipe residue from old deletions
             if (checkedFolders.length === 0) {
-                log("⚠️ WARNING: No folders selected. Proceeding directly to Step 2 will only wipe existing residue.");
+                log("⚠️ WARNING: No specific folders selected for deletion. Proceeding directly to Step 2 will wipe existing residue ONLY.");
                 document.getElementById('btn-certify').disabled = false;
                 document.getElementById('btn-delete').disabled = true;
                 return;
@@ -127,7 +145,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 200) {
-                    log("✅ SUCCESS: Files marked for deletion (residue created).");
+                    log("✅ SUCCESS: Files permanently deleted (residue created).");
                     log("Data residue remains! Now proceed to Step 2 to wipe free space.");
                     document.getElementById('btn-certify').disabled = false;
                 } else {
@@ -150,10 +168,12 @@
             document.getElementById('btn-certify').disabled = true;
 
             const driveId = document.getElementById('drive-select').value;
-            const algorithm = document.getElementById('algo-select').value;
+            const algorithmKey = document.getElementById('algo-select').value;
+            const algorithmName = WIPE_ALGORITHMS[algorithmKey].name;
 
-            log(`Wiping Drive: ${driveId} using ${algorithm}`);
-            log("⏳ Executing secure wipe via Django API. This may take a minute...");
+            log(`Wiping free space on target drive: ${driveId}`);
+            log(`Algorithm: ${algorithmName}`);
+            log("⏳ Executing secure wipe (DD command). This may take a minute...");
 
             fetch(API_MINT_URL, {
                 method: 'POST',
@@ -161,7 +181,7 @@
                 body: JSON.stringify({ 
                     device_id: DEVICE_ID,
                     target_drive: driveId,
-                    algorithm: algorithm,
+                    algorithm: algorithmKey, // Send the key (NIST, DOD, QUICK)
                     user_dir: KALI_USER_DIR,
                 })
             })
@@ -170,17 +190,18 @@
                 if (data.status === 201) {
                     log(`\n✅ CERTIFIED: Digital Passport Minted!`);
                     log(`Drive: ${driveId} is now clean.`);
-                    log(`Algorithm Used: ${WIPE_ALGORITHMS[algorithm].name}`);
+                    log(`Algorithm Used: ${algorithmName}`);
                     log(`DLT Hash: ${data.passport_hash}`);
                     log(`\n-=-=- FINAL STEP: PROCEED TO OS FACTORY RESET -=-=-`);
-                    log(`(View certificate: /api/v1/view/${data.imei}/)`);
+                    // Create view link for certificate verification
+                    log(`(View certificate: ${LOCAL_HOST}/api/v1/view/${data.imei}/)`);
                 } else {
                     log(`\n❌ FAILURE: API rejected. Details: ${data.detail || data.error}`);
                     document.getElementById('btn-certify').disabled = false;
                 }
             })
             .catch(error => {
-                log(`\n❌ CRITICAL ERROR: Could not communicate with Django API.`);
+                log(`\n❌ CRITICAL ERROR: Could not communicate with API.`);
                 document.getElementById('btn-certify').disabled = false;
             });
         }
