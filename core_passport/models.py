@@ -11,7 +11,7 @@ class DigitalPassport(models.Model):
     
     # 2. WIPE CERTIFICATION FIELDS (The Proof)
     mint_date = models.DateTimeField(auto_now_add=True)
-    wipe_standard = models.CharField(max_length=100) 
+    wipe_standard = models.CharField(max_length=100) # e.g., "Web-Triggered Free Space Wipe"
     is_certified = models.BooleanField(default=False) 
     
     # 3. DLT/IMMUTABILITY FIELD (The Novelty)

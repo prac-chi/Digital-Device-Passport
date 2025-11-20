@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Digital Device Passport (DDP)</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+        background-color: #f4f7f6;
+      }
+      .passport-header {
+        background-color: #2196f3;
+        color: white;
+        padding: 20px;
+        text-align: center;
+        border-radius: 8px 8px 0 0;
+      }
+      .status-box {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-top: 15px;
+        font-weight: bold;
+      }
+      .detail-section {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+        background-color: white;
+        border-radius: 0 0 8px 8px;
+      }
+      code {
+        background-color: #eee;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 0.9em;
+      }
+    </style>
+  </head>
+  <body>
+    {% if passport %}
+    <div class="passport-header">
+      <h1>Digital Passport: {{ passport.imei_serial }}</h1>
+      <div class="status-box">CERTIFIED: DATA SECURELY WIPED</div>
+    </div>
+    <div class="detail-section">
+      <h2>Certification Details</h2>
+      <p>
+        <strong>Mint Date:</strong> {{ passport.mint_date|date:"F d, Y H:i" }}
+      </p>
+      <p><strong>Wipe Standard:</strong> {{ passport.wipe_standard }}</p>
+      <p>
+        <strong>Verification Hash (DLT Proof):</strong><br /><code
+          >{{ passport.chain_hash }}</code
+        >
+      </p>
+
+      <h2>Event History</h2>
+      {% for event in events %}
+      <p>
+        <strong
+          >[{{ event.timestamp|date:"m/d/Y H:i" }}] {{ event.event_type
+          }}:</strong
+        >
+        {{ event.event_data.description|default:"No description" }}
+      </p>
+      {% empty %}
+      <p>No further events recorded (e.g., diagnosis, transfer).</p>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="detail-section">
+      <p>Passport not found for this device ID.</p>
+    </div>
+    {% endif %}
+  </body>
+</html>
