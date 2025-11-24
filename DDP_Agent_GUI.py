@@ -15,7 +15,7 @@ import platform
 import sys 
 
 # --- CONFIGURATION (App is now truly universal) ---
-CLOUD_API_MINT_URL = "http://127.0.0.1:8000/api/v1/mint/local-wipe-and-mint/" 
+CLOUD_API_MINT_URL = "http://127.0.0.1:8080/api/v1/mint/local-wipe-and-mint/" 
 DEVICE_ID = "UNIVERSAL-AGENT-" + str(time.time()).replace('.', '')
 WIPE_TARGET_PATH = "/mnt/target/user_data/" 
 CERT_BACKUP_PATH = "/mnt/usb_drive/ddp_certificate_backup.json" 
